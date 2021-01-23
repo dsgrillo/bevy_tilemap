@@ -28,7 +28,7 @@ struct Position {
 #[derive(Default)]
 struct Render {
     sprite_index: usize,
-    z_order: usize,
+    sprite_order: usize,
 }
 
 #[derive(Bundle)]
@@ -225,14 +225,14 @@ fn build_map(
                 position,
                 render: Render {
                     sprite_index: dwarf_sprite_index,
-                    z_order: 1,
+                    sprite_order: 1,
                 },
             });
 
             let dwarf_tile = Tile {
                 point: (0, 0),
                 sprite_index: dwarf_sprite_index,
-                z_order: 1,
+                sprite_order: 1,
                 ..Default::default()
             };
             tiles.push(dwarf_tile);
@@ -264,7 +264,7 @@ fn move_sprite(
     let tile = Tile {
         point: (position.x, position.y),
         sprite_index: render.sprite_index,
-        z_order: render.z_order,
+        sprite_order: render.sprite_order,
         ..Default::default()
     };
     map.insert_tile(tile).unwrap();

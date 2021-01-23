@@ -4,7 +4,7 @@
 use crate::{chunk::Chunk, TilemapLayer};
 use crate::{
     chunk::{
-        entity::{ChunkBundle, ModifiedLayer, ZOrder},
+        entity::{ChunkBundle, Modified},
         mesh::ChunkMesh,
         render::GridTopology,
     },
@@ -25,7 +25,7 @@ pub(crate) fn tilemap_events(
     commands: &mut Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut tilemap_query: Query<(Entity, &mut Tilemap)>,
-    mut layer_query: Query<&mut ModifiedLayer>,
+    mut modified_query: Query<&mut Modified>,
 ) {
     for (map_entity, mut tilemap) in tilemap_query.iter_mut() {
         tilemap.chunk_events_update();
@@ -42,11 +42,8 @@ pub(crate) fn tilemap_events(
                 Spawned { ref point } => {
                     spawned_chunks.push(*point);
                 }
-                Despawned {
-                    ref entities,
-                    ref point,
-                } => {
-                    despawned_chunks.push((entities.clone(), *point));
+                Despawned { ref point } => {
+                    despawned_chunks.push(*point);
                 }
             }
         }
@@ -59,7 +56,6 @@ pub(crate) fn tilemap_events(
                 tilemap.spawned_chunks_mut().insert((point.x, point.y));
             }
 
-            let layers = tilemap.layers();
             let layers_len = tilemap.layers().len();
             let chunk_dimensions = tilemap.chunk_dimensions();
             let tile_dimensions = tilemap.tile_dimensions();
@@ -73,116 +69,132 @@ pub(crate) fn tilemap_events(
                 continue;
             };
             let mut entities = Vec::with_capacity(capacity);
-            for z_order in 0..layers_len {
-                if layers.get(z_order).is_none() {
-                    continue;
+            let mut mesh = Mesh::from(&ChunkMesh::new(
+                chunk_dimensions,
+                layers_len as u32,
+                Vec2::new(0., 0.), // TODO: put actual value here
+            ));
+            let (indexes, colors) = chunk.tiles_to_renderer_parts(chunk_dimensions);
+            mesh.set_attribute(ChunkMesh::ATTRIBUTE_TILE_INDEX, indexes);
+            mesh.set_attribute(ChunkMesh::ATTRIBUTE_TILE_COLOR, colors);
+            let mesh_handle = meshes.add(mesh);
+            chunk.set_mesh(mesh_handle.clone());
+
+            use GridTopology::*;
+            let translation_x = match topology {
+                HexX | HexEvenCols | HexOddCols => {
+                    (((chunk.point().x * tile_dimensions.width as i32) as f32 * 0.75) as i32
+                        * chunk_dimensions.width as i32) as f32
                 }
-                let mut mesh = Mesh::from(&ChunkMesh::new(chunk_dimensions));
-                let (indexes, colors) =
-                    if let Some(parts) = chunk.tiles_to_renderer_parts(z_order, chunk_dimensions) {
-                        parts
-                    } else {
-                        warn!("Can not split tiles to data for the renderer");
-                        continue;
-                    };
-                mesh.set_attribute(ChunkMesh::ATTRIBUTE_TILE_INDEX, indexes);
-                mesh.set_attribute(ChunkMesh::ATTRIBUTE_TILE_COLOR, colors);
-                let mesh_handle = meshes.add(mesh);
-                chunk.set_mesh(z_order, mesh_handle.clone());
+                HexY => {
+                    (chunk.point().x * tile_dimensions.width as i32 * chunk_dimensions.width as i32)
+                        as f32
+                        + (chunk.point().y as f32 * chunk_dimensions.height as f32 * 0.5)
+                            * tile_dimensions.width as f32
+                }
+                Square | HexEvenRows | HexOddRows => {
+                    (chunk.point().x * tile_dimensions.width as i32 * chunk_dimensions.width as i32)
+                        as f32
+                }
+            };
+            let translation_y = match topology {
+                HexX => {
+                    (chunk.point().y
+                        * tile_dimensions.height as i32
+                        * chunk_dimensions.height as i32) as f32
+                        + (chunk.point().x as f32 * chunk_dimensions.width as f32 * 0.5)
+                            * tile_dimensions.height as f32
+                }
+                HexY | HexEvenRows | HexOddRows => {
+                    (((chunk.point().y * tile_dimensions.height as i32) as f32 * 0.75) as i32
+                        * chunk_dimensions.height as i32) as f32
+                }
+                Square | HexEvenCols | HexOddCols => {
+                    (chunk.point().y
+                        * tile_dimensions.height as i32
+                        * chunk_dimensions.height as i32) as f32
+                }
+            };
+            // TODO: set translation Z from somewhere else.
+            let translation = Vec3::new(translation_x, translation_y, 1.0);
+            let pipeline = RenderPipeline::new(pipeline_handle.clone_weak().typed());
+            let entity = if let Some(entity) = commands
+                .spawn(ChunkBundle {
+                    point,
+                    texture_atlas: texture_atlas.clone_weak(),
+                    mesh: mesh_handle.clone_weak(),
+                    transform: Transform::from_translation(translation),
+                    render_pipelines: RenderPipelines::from_pipelines(vec![pipeline]),
+                    draw: Default::default(),
+                    visible: Visible {
+                        // TODO: this would be nice as a config parameter to make
+                        // RapierRenderPlugin's output visible.
+                        is_visible: true,
+                        is_transparent: true,
+                    },
+                    main_pass: MainPass,
+                    global_transform: Default::default(),
+                    modified: Default::default(),
+                })
+                .current_entity()
+            {
+                entity
+            } else {
+                error!("Chunk entity does not exist unexpectedly, can not run the tilemap system");
+                return;
+            };
 
-                use GridTopology::*;
-                let translation_x = match topology {
-                    HexX | HexEvenCols | HexOddCols => {
-                        (((chunk.point().x * tile_dimensions.width as i32) as f32 * 0.75) as i32
-                            * chunk_dimensions.width as i32) as f32
-                    }
-                    HexY => {
-                        (chunk.point().x
-                            * tile_dimensions.width as i32
-                            * chunk_dimensions.width as i32) as f32
-                            + (chunk.point().y as f32 * chunk_dimensions.height as f32 * 0.5)
-                                * tile_dimensions.width as f32
-                    }
-                    Square | HexEvenRows | HexOddRows => {
-                        (chunk.point().x
-                            * tile_dimensions.width as i32
-                            * chunk_dimensions.width as i32) as f32
-                    }
-                };
-                let translation_y = match topology {
-                    HexX => {
-                        (chunk.point().y
-                            * tile_dimensions.height as i32
-                            * chunk_dimensions.height as i32) as f32
-                            + (chunk.point().x as f32 * chunk_dimensions.width as f32 * 0.5)
-                                * tile_dimensions.height as f32
-                    }
-                    HexY | HexEvenRows | HexOddRows => {
-                        (((chunk.point().y * tile_dimensions.height as i32) as f32 * 0.75) as i32
-                            * chunk_dimensions.height as i32) as f32
-                    }
-                    Square | HexEvenCols | HexOddCols => {
-                        (chunk.point().y
-                            * tile_dimensions.height as i32
-                            * chunk_dimensions.height as i32) as f32
-                    }
-                };
-                let translation = Vec3::new(translation_x, translation_y, z_order as f32);
-                let pipeline = RenderPipeline::new(pipeline_handle.clone_weak().typed());
-                let entity = if let Some(entity) = commands
-                    .spawn(ChunkBundle {
-                        point,
-                        z_order: ZOrder(z_order),
-                        texture_atlas: texture_atlas.clone_weak(),
-                        mesh: mesh_handle.clone_weak(),
-                        transform: Transform::from_translation(translation),
-                        render_pipelines: RenderPipelines::from_pipelines(vec![pipeline]),
-                        draw: Default::default(),
-                        visible: Visible {
-                            // TODO: this would be nice as a config parameter to make
-                            // RapierRenderPlugin's output visible.
-                            is_visible: true,
-                            is_transparent: true,
-                        },
-                        main_pass: MainPass,
-                        global_transform: Default::default(),
-                        modified_layer: Default::default(),
-                    })
-                    .current_entity()
-                {
-                    entity
-                } else {
-                    error!(
-                        "Chunk entity does not exist unexpectedly, can not run the tilemap system"
-                    );
-                    return;
-                };
+            info!("Chunk {} spawned", point);
 
-                info!("Chunk {} spawned", point);
-
-                chunk.add_entity(z_order, entity);
-                entities.push(entity);
-            }
+            chunk.set_entity(entity);
+            entities.push(entity);
+            // }
             commands.push_children(map_entity, &entities);
         }
 
         for layers in modified_chunks.into_iter() {
-            for (_layer, entity) in layers.into_iter() {
-                let mut modified_layer = if let Ok(layer) = layer_query.get_mut(entity) {
-                    layer
+            for (_layer, point) in layers.into_iter() {
+                let chunk = if let Some(chunk) = tilemap.chunks_mut().get_mut(&point) {
+                    chunk
                 } else {
-                    warn!("Chunk layer does not exist, skipping");
+                    warn!("Can not get chunk at {}, skipping", &point);
                     continue;
                 };
-                modified_layer.0 += 1;
+                if let Some(entity) = chunk.get_entity() {
+                    let mut count = if let Ok(count) = modified_query.get_mut(entity) {
+                        count
+                    } else {
+                        warn!(
+                            "Can not increment modified count for chunk {}, skipping",
+                            point
+                        );
+                        continue;
+                    };
+                    count.0 += 1;
+                } else {
+                    warn!("Can not take entity from chunk {}, skipping", point);
+                    continue;
+                };
             }
         }
 
-        for (entities, point) in despawned_chunks.into_iter() {
-            for entity in entities.into_iter() {
-                commands.despawn_recursive(entity);
+        for point in despawned_chunks.into_iter() {
+            let chunk = if let Some(chunk) = tilemap.chunks_mut().get_mut(&point) {
+                chunk
+            } else {
+                warn!("Can not get chunk at {}, skipping", &point);
+                continue;
+            };
+            match chunk.take_entity() {
+                Some(e) => {
+                    commands.despawn_recursive(e);
+                    info!("Chunk {} despawned", point);
+                }
+                None => {
+                    warn!("Can not take entity from chunk {}, skipping", point);
+                    continue;
+                }
             }
-            info!("Chunk {} despawned", point);
         }
     }
 }
@@ -196,7 +208,7 @@ fn spawn_collisions(
     commands: &mut Commands,
     layers: &[Option<TilemapLayer>],
     point: Point2,
-    z_order: usize,
+    sprite_order: usize,
     chunk: &mut Chunk,
     chunk_dimensions: Dimension2,
     tile_dimensions: Dimension2,
@@ -205,7 +217,7 @@ fn spawn_collisions(
     physics_tile_height: f32,
 ) {
     // Don't continue if there is no layer.
-    if let Some(layer_opt) = layers.get(z_order) {
+    if let Some(layer_opt) = layers.get(sprite_order) {
         match layer_opt {
             Some(layer) => {
                 if layer.interaction_groups.0 == 0 {
@@ -216,7 +228,7 @@ fn spawn_collisions(
         }
     }
     // Don't continue if there is no entity.
-    let entity = match chunk.get_entity(z_order) {
+    let entity = match chunk.get_entity(sprite_order) {
         Some(e) => e,
         None => return,
     };
@@ -226,7 +238,7 @@ fn spawn_collisions(
         return;
     }
     let mut collision_entities = Vec::new();
-    if let Some(indices) = chunk.get_tile_indices(z_order) {
+    if let Some(indices) = chunk.get_tile_indices(sprite_order) {
         for index in &indices {
             let point = match chunk_dimensions.decode_point(*index) {
                 Ok(p) => p,
@@ -257,7 +269,7 @@ fn spawn_collisions(
             }
 
             let collision_groups = layers
-                .get(z_order)
+                .get(sprite_order)
                 .and_then(|layer_opt| layer_opt.and_then(|layer| Some(layer.interaction_groups)));
             if let Some(collision_groups) = collision_groups {
                 if collision_groups.with_mask(0).0 != 0 {
@@ -333,12 +345,12 @@ pub(crate) fn tilemap_collision_events(
                 warn!("Can not get chunk at {}, skipping", &point);
                 continue;
             };
-            for z_order in 0..layers_len {
+            for sprite_order in 0..layers_len {
                 spawn_collisions(
                     commands,
                     &layers,
                     point,
-                    z_order,
+                    sprite_order,
                     chunk,
                     chunk_dimensions,
                     tile_dimensions,
@@ -387,7 +399,7 @@ pub(crate) fn tilemap_collision_events(
                     commands,
                     &layers,
                     tile.point,
-                    tile.z_order,
+                    tile.sprite_order,
                     chunk,
                     chunk_dimensions,
                     tile_dimensions,
@@ -413,7 +425,7 @@ pub(crate) fn tilemap_collision_events(
                     commands.despawn(entity);
                     info!(
                         "Tile {} on z order {} collision entity despawned",
-                        tile.point, tile.z_order
+                        tile.point, tile.sprite_order
                     );
                 }
             }

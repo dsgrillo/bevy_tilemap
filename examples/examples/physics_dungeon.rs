@@ -175,13 +175,13 @@ fn build_random_dungeon(
             tiles.push(Tile {
                 point: tile_a,
                 sprite_index: wall_idx,
-                z_order: 1,
+                sprite_order: 1,
                 ..Default::default()
             });
             tiles.push(Tile {
                 point: tile_b,
                 sprite_index: wall_idx,
-                z_order: 1,
+                sprite_order: 1,
                 ..Default::default()
             });
         }
@@ -194,13 +194,13 @@ fn build_random_dungeon(
             tiles.push(Tile {
                 point: tile_a,
                 sprite_index: wall_idx,
-                z_order: 1,
+                sprite_order: 1,
                 ..Default::default()
             });
             tiles.push(Tile {
                 point: tile_b,
                 sprite_index: wall_idx,
-                z_order: 1,
+                sprite_order: 1,
                 ..Default::default()
             });
         }
@@ -216,7 +216,7 @@ fn build_random_dungeon(
                 tiles.push(Tile {
                     point: (x, y),
                     sprite_index: wall_idx,
-                    z_order: 1,
+                    sprite_order: 1,
                     ..Default::default()
                 });
             }

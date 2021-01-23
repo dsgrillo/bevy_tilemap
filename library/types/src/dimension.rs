@@ -42,6 +42,66 @@ impl From<ErrorKind> for DimensionError {
 /// A dimension result which is of the type `Result<T, DimensionError>`.
 pub type DimensionResult<T> = Result<T, DimensionError>;
 
+/// A dimension kind.
+///
+/// Useful in those situations where you may have a different dimension
+/// depending on implementation.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[derive(Copy, Clone, Debug)]
+pub enum DimensionKind {
+    /// A wrapped 2nd dimension.
+    Dimension2(Dimension2),
+    /// A wrapped 3rd dimension.
+    Dimension3(Dimension3),
+}
+
+impl DimensionKind {
+    /// The width of a dimension.
+    pub fn width(&self) -> u32 {
+        use DimensionKind::*;
+        match self {
+            Dimension2(d2) => d2.width,
+            Dimension3(d3) => d3.width,
+        }
+    }
+
+    /// The height of a dimension.
+    pub fn height(&self) -> u32 {
+        use DimensionKind::*;
+        match self {
+            Dimension2(d2) => d2.height,
+            Dimension3(d3) => d3.height,
+        }
+    }
+
+    /// The optional depth of a dimension.
+    pub fn depth(&self) -> Option<u32> {
+        use DimensionKind::*;
+        match self {
+            Dimension2(_) => None,
+            Dimension3(d3) => Some(d3.depth),
+        }
+    }
+}
+
+impl From<Dimension2> for DimensionKind {
+    fn from(dimension: Dimension2) -> Self {
+        Self::Dimension2(dimension)
+    }
+}
+
+impl From<Dimension3> for DimensionKind {
+    fn from(dimension: Dimension3) -> Self {
+        Self::Dimension3(dimension)
+    }
+}
+
+impl From<DimensionKind> for Dimension2 {
+    fn from(kind: DimensionKind) -> Self {
+        Dimension2::new(kind.width(), kind.height())
+    }
+}
+
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 /// Dimensions of the 2nd kind.
@@ -333,7 +393,7 @@ impl SubAssign for Dimension2 {
 }
 
 #[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Copy, Clone)]
+#[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Hash, Debug)]
 /// Dimensions of the 3rd kind.
 pub struct Dimension3 {
     /// The width of this dimension.
@@ -346,12 +406,17 @@ pub struct Dimension3 {
 
 impl Dimension3 {
     /// Constructs a new 2nd dimension.
-    pub fn new(width: u32, height: u32, depth: u32) -> Dimension3 {
+    pub const fn new(width: u32, height: u32, depth: u32) -> Dimension3 {
         Dimension3 {
             width,
             height,
             depth,
         }
+    }
+
+    /// The total area of the dimension.
+    pub fn area(&self) -> u32 {
+        self.width * self.height * self.depth
     }
 
     /// The maximum X value of this dimension.

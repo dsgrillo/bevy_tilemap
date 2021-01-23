@@ -24,7 +24,7 @@ struct Position {
 #[derive(Default)]
 struct Render {
     sprite_index: usize,
-    z_order: usize,
+    sprite_order: usize,
 }
 
 #[derive(Default)]
@@ -172,13 +172,13 @@ fn build_random_world(
             tiles.push(Tile {
                 point: tile_a,
                 sprite_index: boulder_index,
-                z_order: 1,
+                sprite_order: 1,
                 ..Default::default()
             });
             tiles.push(Tile {
                 point: tile_b,
                 sprite_index: boulder_index,
-                z_order: 1,
+                sprite_order: 1,
                 ..Default::default()
             });
             game_state.collisions.insert(tile_a);
@@ -193,13 +193,13 @@ fn build_random_world(
             tiles.push(Tile {
                 point: tile_a,
                 sprite_index: boulder_index,
-                z_order: 1,
+                sprite_order: 1,
                 ..Default::default()
             });
             tiles.push(Tile {
                 point: tile_b,
                 sprite_index: boulder_index,
-                z_order: 1,
+                sprite_order: 1,
                 ..Default::default()
             });
             game_state.collisions.insert(tile_a);
@@ -218,14 +218,14 @@ fn build_random_world(
                     tiles.push(Tile {
                         point: (x, y),
                         sprite_index: boulder_index,
-                        z_order: 1,
+                        sprite_order: 1,
                         ..Default::default()
                     });
                 } else {
                     tiles.push(Tile {
                         point: (x, y),
                         sprite_index: trees_index,
-                        z_order: 1,
+                        sprite_order: 1,
                         ..Default::default()
                     });
                 }
@@ -265,7 +265,7 @@ fn build_random_world(
         let dwarf_tile = Tile {
             point: (0, 0),
             sprite_index: dwarf_sprite_index,
-            z_order: 2,
+            sprite_order: 2,
             ..Default::default()
         };
         tiles.push(dwarf_tile);
@@ -275,7 +275,7 @@ fn build_random_world(
             position: Position { x: 0, y: 0 },
             render: Render {
                 sprite_index: dwarf_sprite_index,
-                z_order: 2,
+                sprite_order: 2,
             },
         });
 
@@ -303,7 +303,7 @@ fn move_sprite(
     let tile = Tile {
         point: (position.x, position.y),
         sprite_index: render.sprite_index,
-        z_order: render.z_order,
+        sprite_order: render.sprite_order,
         ..Default::default()
     };
     map.insert_tile(tile).unwrap();
