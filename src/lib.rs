@@ -62,8 +62,7 @@
 // #![no_implicit_prelude]
 
 // rustc / rustdoc
-#![warn(missing_docs, private_doc_tests)]
-#![deny(dead_code, unused_imports)]
+#![warn(missing_docs, private_doc_tests, dead_code, unused_imports)]
 // clippy
 #![allow(clippy::too_many_arguments, clippy::type_complexity)]
 #![warn(
@@ -185,7 +184,7 @@ mod lib {
         Bundle, Changed, Commands, Entity, IntoSystem, Query, Res, ResMut, Resources, SystemStage,
     };
     pub(crate) use bevy_log::{error, info, warn};
-    pub(crate) use bevy_math::Vec3;
+    pub(crate) use bevy_math::{Vec2, Vec3};
     #[cfg(feature = "bevy_rapier2d")]
     pub(crate) use bevy_rapier2d::rapier::{
         dynamics::RigidBodyBuilder,
@@ -209,7 +208,7 @@ mod lib {
     };
     pub(crate) use bevy_sprite::TextureAtlas;
     pub(crate) use bevy_tilemap_types::{
-        dimension::{Dimension2, DimensionError},
+        dimension::{Dimension2, Dimension3, DimensionError},
         point::Point2,
     };
     pub(crate) use bevy_transform::{

@@ -307,10 +307,9 @@ impl Chunk {
         z: usize,
         dimensions: Dimension2,
     ) -> Option<(Vec<f32>, Vec<[f32; 4]>)> {
-        let area = dimensions.area() as usize;
         self.sprite_layers.get(z).and_then(|o| {
             o.as_ref()
-                .map(|layer| layer.inner.as_ref().tiles_to_attributes(area))
+                .map(|layer| layer.inner.as_ref().tiles_to_attributes(dimensions))
         })
     }
 }

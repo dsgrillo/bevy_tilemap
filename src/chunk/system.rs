@@ -1,6 +1,6 @@
 use crate::{
     chunk::{
-        entity::{ModifiedLayer, ZOrder},
+        entity::{Modified, ZOrder},
         mesh::ChunkMesh,
     },
     lib::*,
@@ -12,7 +12,7 @@ use crate::{
 pub(crate) fn chunk_update(
     mut meshes: ResMut<Assets<Mesh>>,
     map_query: Query<&Tilemap>,
-    mut chunk_query: Query<(&Parent, &Point2, &ZOrder, &Handle<Mesh>), Changed<ModifiedLayer>>,
+    mut chunk_query: Query<(&Parent, &Point2, &ZOrder, &Handle<Mesh>), Changed<Modified>>,
 ) {
     for (parent, point, z_order, mesh_handle) in chunk_query.iter_mut() {
         let tilemap = if let Ok(tilemap) = map_query.get(**parent) {

@@ -23,24 +23,35 @@ impl From<&ChunkMesh> for Mesh {
     fn from(chunk_mesh: &ChunkMesh) -> Mesh {
         let chunk_width = chunk_mesh.dimensions.width as i32;
         let chunk_height = chunk_mesh.dimensions.height as i32;
+        let chunk_depth = 1;
+        let chunk_layers = 1;
+        let z_offset = Vec2::new(0., 0.);
+        let capacity = (chunk_width * chunk_height * chunk_depth * chunk_layers) as usize;
 
-        let mut vertices = Vec::with_capacity((chunk_width * chunk_height) as usize * 4);
-        for y in 0..chunk_height {
-            for x in 0..chunk_width {
-                let y0 = y as f32 - chunk_height as f32 / 2.0;
-                let y1 = (y + 1) as f32 - chunk_height as f32 / 2.0;
-                let x0 = x as f32 - chunk_width as f32 / 2.0;
-                let x1 = (x + 1) as f32 - chunk_width as f32 / 2.0;
+        let mut vertices = Vec::with_capacity(capacity * 4);
+        for z in 0..chunk_depth {
+            for l in 0..chunk_layers {
+                for y in 0..chunk_height {
+                    for x in 0..chunk_width {
+                        let offset_y = z_offset.y * z as f32;
+                        let offset_x = z_offset.x * z as f32;
+                        let y0 = y as f32 - chunk_height as f32 / 2.0 + offset_y;
+                        let y1 = (y + 1) as f32 - chunk_height as f32 / 2.0 + offset_y;
+                        let x0 = x as f32 - chunk_width as f32 / 2.0 + offset_x;
+                        let x1 = (x + 1) as f32 - chunk_width as f32 / 2.0 + offset_x;
 
-                vertices.push([x0, y0, 0.0]);
-                vertices.push([x0, y1, 0.0]);
-                vertices.push([x1, y1, 0.0]);
-                vertices.push([x1, y0, 0.0]);
+                        let depth = ((z * l) + l) as f32;
+                        vertices.push([x0, y0, depth]);
+                        vertices.push([x0, y1, depth]);
+                        vertices.push([x1, y1, depth]);
+                        vertices.push([x1, y0, depth]);
+                    }
+                }
             }
         }
 
         let indices = Indices::U32(
-            (0..(chunk_width * chunk_height) as u32)
+            (0..(capacity) as u32)
                 .flat_map(|i| {
                     let i = i * 4;
                     vec![i, i + 2, i + 1, i, i + 3, i + 2]

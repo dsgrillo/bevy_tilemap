@@ -4,7 +4,7 @@
 use crate::{chunk::Chunk, TilemapLayer};
 use crate::{
     chunk::{
-        entity::{ChunkBundle, ModifiedLayer, ZOrder},
+        entity::{ChunkBundle, Modified, ZOrder},
         mesh::ChunkMesh,
         render::GridTopology,
     },
@@ -25,7 +25,7 @@ pub(crate) fn tilemap_events(
     commands: &mut Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut tilemap_query: Query<(Entity, &mut Tilemap)>,
-    mut layer_query: Query<&mut ModifiedLayer>,
+    mut layer_query: Query<&mut Modified>,
 ) {
     for (map_entity, mut tilemap) in tilemap_query.iter_mut() {
         tilemap.chunk_events_update();
@@ -146,7 +146,7 @@ pub(crate) fn tilemap_events(
                         },
                         main_pass: MainPass,
                         global_transform: Default::default(),
-                        modified_layer: Default::default(),
+                        modified: Default::default(),
                     })
                     .current_entity()
                 {

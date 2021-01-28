@@ -2,7 +2,7 @@ use crate::lib::*;
 
 /// A component that is used as a flag for dirty chunks that need updating.
 #[derive(Default)]
-pub(crate) struct ModifiedLayer(pub usize);
+pub(crate) struct Modified(pub usize);
 
 /// The Z Order of a layer in a chunk.
 pub(crate) struct ZOrder(pub usize);
@@ -32,5 +32,5 @@ pub(crate) struct ChunkBundle {
     /// The global transform location in a space for a component.
     pub global_transform: GlobalTransform,
     /// If a layer has been modified, all are set here.
-    pub modified_layer: ModifiedLayer,
+    pub modified: Modified,
 }
